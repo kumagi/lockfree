@@ -31,7 +31,6 @@ private:
  
 	// pool function
 	friend void* (::pool<arg>)(void*);
- 
 public:
 	threadpool(const int nthreads):head(0),max(nthreads),tmpid(0),workers(0){
 		pthread_mutex_init(&tmpid_mutex,NULL);
@@ -50,10 +49,11 @@ public:
 	~threadpool(void){
 		for(int i=0;i<max;i++){
 			pthread_cancel(threads[i].t);
+			pthread_mutex_destroy(&mutexs[i]); 
 		}
+		pthread_mutex_destroy(&tmpid_mutex); 
 	}
-	int run(void (*func)(arg),const arg& param){
-		int success;
+	void run(void (*func)(arg),const arg& param){
 		int it = head;
  
 		// decide thread id
@@ -67,8 +67,8 @@ public:
 		// set parameter
 		threads[it].funcname = func;
 		threads[it].argument = param;
- 
-		while(!__sync_bool_compare_and_swap(&workers,workers,workers+1));
+		
+		__sync_fetch_and_add(&workers,1);
  
 		pthread_mutex_unlock(&mutexs[it]);
 		head = (it+1)%(max-1);
@@ -89,9 +89,10 @@ namespace{
 			pthread_mutex_lock(&obj->mutexs[myid]);
 			(obj->threads[myid].funcname)(obj->threads[myid].argument);
  
-			while(!__sync_bool_compare_and_swap(&obj->workers,obj->workers,obj->workers-1));
+			__sync_fetch_and_sub(&obj->workers,1);
 			obj->threads[myid].available = true;
 		}
+		return NULL;
 	}
 };
  
