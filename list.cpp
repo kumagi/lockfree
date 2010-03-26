@@ -7,30 +7,67 @@ class list{
 private:
 	class Node{
 	public:
-		boost::shared_ptr<T> item;
-		Node* next; // it contains deletion mark in &1
-		int* shared_cnt;
-		Node(boost::shared_ptr<T> i):item(i),next(NULL),counter((int*)malloc(sizeof(int))){ }
-	private:
-		Node(){ }
+		T item;
+		markable_ptr<Node> next; // it contains deletion mark in &1
+		atomic_int shared_cnt;
+		Node(const T t):item(t),next(NULL),shared_cnt(0){ }
+		Node():item(),next(NULL),shared_cnt(1){ }// sentinel node
+			
 	};
-	boost::shared_ptr<T> dummy;
-	Node head,tail;
+	typedef markable_ptr<Node> NodePtr;
+	Node *dummy;
+	Node head;
 	
 	list(const list&);
 	list& operator=(const list&);
 public:
-	list(void):head(dummy),tail(dummy) {
-		head.next = &tail;
-		tail.next = 0;
+	class iterator{
+	public:
+		const Node* const head;
+		Node *pred,*curr,*succ;
+		int cnt;
+		iterator& operator++(){
+			while(1){
+				bool next_mark = curr->next.check_mark();
+				succ = curr->next;
+				while(next_mark){
+					if(!compare_and_set(&pred->next,curr->get_pointer(),succ)){
+						int counter = 0;
+						pred = head;
+						curr = pred.next;
+					}
+					curr = succ;
+					succ = curr->next;
+					next_mark = curr->next.check_mark();
+				}
+				pred.shared_cnt--;
+				pred = curr;
+				succ.shared_cnt++;
+				curr = succ;
+			}
+		}
+		Node& operator*(){return *curr;}
+		Node* operator->(){return curr;}
+		iterator(const Node *h, Node *p, Node *c, Node *s, int cn):head(h),pred(p),curr(c),succ(s),cnt(cn){
+			pred->shared_cnt++;
+			curr->shared_cnt++;
+		}
+		iterator(const iterator& it):head(it.head),pred(it.pred),curr(it.curr),succ(it.succ),cnt(it.cnt){
+			if(pred) {pred->shared_cnt++;}
+			if(curr) {curr->shared_cnt++;}
+			if(succ) {succ->shared_cnt++;}
+		}
+		~iterator(){
+			pred->shared_cnt--;
+			curr->shared_cnt--;
+			succ->shared_cnt--;
+		}
+	};
+	list(void):dummy(),head() {
 	}
-	
-	void enque(boost::shared_ptr<T> obj){
-		
-	}
-	boost::shared_ptr<T> pop(void){
-		
-	}
+	iterator begin(){
+		return iterator(&head,&head,head.next.get_pointer(),NULL,0);
+	};
 };
 
 
@@ -39,10 +76,11 @@ public:
 
 class tester{
 private:
-	list<int> list;
+	list<int> mlist;
+	list<int>::iterator it;
 	int state;
 public:
-	tester(void):list(),state(0){ }
+	tester(void):mlist(),it(mlist.begin()),state(0){ }
 	void run(){ }
 	bool success(){ return true; }
 };

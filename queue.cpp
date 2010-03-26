@@ -10,8 +10,8 @@ private:
 		const T mValue;
 		Node* mNext;
 		Node(const T& v):mValue(v),mNext(NULL){}
+		Node():mValue(),mNext(NULL){};
 	private:
-		Node();
 		Node(const Node&);
 		Node& operator=(const Node&);
 	};	
@@ -21,7 +21,7 @@ private:
 	queue(const queue&);
 	queue& operator=(const queue&);
 public:
-	queue():mHead(new Node(NULL)),mTail(mHead){ } // sentinel node
+	queue():mHead(new Node()),mTail(mHead){ } // sentinel node
 	
 	void enq(const T& v){
 		Node* const node = new Node(v);
@@ -63,6 +63,37 @@ public:
 				}
 			}
 		}
+	}
+	
+	T deq_throws(void){
+		while(1){
+			const Node* const first = mHead;
+			const Node* const last = mTail;
+			const Node* const next = first->mNext;
+
+			if(first != mHead){ continue;}
+			
+			if(first == last){
+				if(next == NULL){
+					throw 1;
+				}
+				compare_and_set(&mTail,last,next);
+			}else{
+				const T v = next->mValue;
+				if(compare_and_set(&mHead, first, next)){
+					delete first;
+					return v;
+				}
+			}
+		}
+	}
+	~queue(){
+		try{
+			while(1){
+				deq_throws();
+			}
+		}
+		catch(int i){};
 	}
 };
 
@@ -111,8 +142,10 @@ void enque_mutex(item* node){
 }
 void deque_mutex(item* node){
 	pthread_mutex_lock(&deq_mutex);
-	
-	item* dequed = g_stlqueue.front();
+	item* dequed; 
+	do{
+		dequed = g_stlqueue.front();
+	}while(dequed == NULL);
 	g_stlqueue.pop();
 	delete dequed;
 	
@@ -127,8 +160,8 @@ void deque(item* node){
 	item* dequed = lfqueue.deq();
 	delete dequed;
 }
-#define THREADS 3000
-#define MAX 100000
+#define THREADS 30
+#define MAX 10000
 int main (void)
 {
 	// random seed
