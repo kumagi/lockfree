@@ -24,7 +24,7 @@ public:
 	queue():mHead(new Node()),mTail(mHead){ } // sentinel node
 	
 	void enq(const T& v){
-		Node* const node = new Node(v);
+		const Node* const node = new Node(v);
 		while(1){
 			const Node* const last = mTail;
 	 		const Node* const next = last->mNext;
@@ -101,17 +101,7 @@ public:
 #include <stdio.h>
 #include <stdlib.h>
 #include <queue>
-class item{
-public:
-	int a;
-private:
-	int b,c;
-	item();
-public:
-	item(int x,int y, int z):a(x),b(y),c(z){ }
-	void print(void)const {fprintf(stderr,"%d -> ",a);}
-};
-queue<item*> lfqueue;
+queue<int> lfqueue;
 
 /*
 int main(void){
@@ -121,11 +111,10 @@ int main(void){
 }
 
 /*/
-std::queue<item*> g_stlqueue;
+std::queue<int> g_stlqueue;
 
-
-void enque(item* node){
-	lfqueue.enq(node);
+void enque(int i){
+	lfqueue.enq(i);
 }
 
 
@@ -133,21 +122,20 @@ pthread_mutex_t enq_mutex;
 pthread_mutex_t deq_mutex;
 
 
-void enque_mutex(item* node){
+void enque_mutex(int i){
 	pthread_mutex_lock(&enq_mutex);
 	
-	g_stlqueue.push(node);
+	g_stlqueue.push(i);
 	
 	pthread_mutex_unlock(&enq_mutex);
 }
-void deque_mutex(item* node){
+void deque_mutex(int){
 	pthread_mutex_lock(&deq_mutex);
-	item* dequed; 
+	int dequed; 
 	do{
 		dequed = g_stlqueue.front();
-	}while(dequed == NULL);
+	}while(dequed == 0);
 	g_stlqueue.pop();
-	delete dequed;
 	
 	pthread_mutex_unlock(&deq_mutex);
 }
@@ -156,12 +144,12 @@ void deque_mutex(item* node){
 #include "gettime.h"
 
 pthread_mutex_t printmutex;
-void deque(item* node){
-	item* dequed = lfqueue.deq();
-	delete dequed;
+void deque(int){
+	int i = lfqueue.deq();
+	i = i;
 }
 #define THREADS 30
-#define MAX 10000
+#define MAX 100000
 int main (void)
 {
 	// random seed
@@ -172,14 +160,14 @@ int main (void)
 	pthread_mutex_init(&enq_mutex,0);
 	pthread_mutex_init(&deq_mutex,0);
 	
-	threadpool<item*> threads(THREADS);
+	threadpool<int> threads(THREADS);
 	
 	printf("%d thread initialized\n", THREADS);
 	
 	// lockfree queue bench
 	const double start = gettime();
 	for(int i = 0; i < MAX; i++){
-		threads.run(enque,new item(i,rand()%21,rand()%433+23));
+		threads.run(enque,i);
 		threads.run(deque,NULL);
 	}
 	threads.wait();
@@ -188,22 +176,24 @@ int main (void)
 	
 	
 	// stl with single thread start
-	std::queue<item*> stlqueue;
+	std::queue<int> stlqueue;
 	const double stlstart = gettime();
 	for(int i = 0; i < MAX; i++){
-		stlqueue.push(new item(i,rand()%21,rand()%433+23));
-		item* dequed = stlqueue.front();
-		delete dequed;
+		stlqueue.push(i);
+		int p = stlqueue.front();
+		p = p;
 		stlqueue.pop();
 	}
 	const double stlend = gettime();
 	printf("STL\t\t| %d items enque and dequed  time: %lf\n", MAX, stlend - stlstart);
 	
 	
-	// stl with multi thread with mutex start
+	// mutex with stl start
 	const double mutexstart = gettime();
 	for(int i = 0; i < MAX; i++){
-		threads.run(enque_mutex,new item(i,rand()%21,rand()%433+23));
+		threads.run(enque_mutex,i+1);
+	}
+	for(int i = 0; i < MAX; i++){
 		threads.run(deque_mutex,NULL);
 	}
 	threads.wait();

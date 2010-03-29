@@ -1,6 +1,7 @@
 #include <time.h>
 #include <sys/time.h>
 
+double gettime() __attribute__((always_inline));
 double gettime()
 {
     struct timeval tv;
