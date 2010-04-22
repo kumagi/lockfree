@@ -1,8 +1,8 @@
 CC = g++44
-OPTS= -pthread -Wall -O4
+OPTS= -pthread -Wall -O4 -g
 OBJS=queue.o list.o
 target:queue
-target:stack
+#target:stack
 
 list:list.o Makefile
 	$(CC) list.o -o list $(OPTS)

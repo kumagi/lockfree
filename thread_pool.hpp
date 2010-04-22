@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <stdlib.h> // malloc
 #include <unistd.h> // sleep,usleep
+#include "queue.hpp"
 #include <boost/shared_ptr.hpp>
  
 #include <stdio.h>
