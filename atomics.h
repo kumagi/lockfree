@@ -54,20 +54,26 @@ public:
 template<typename T>
 class markable_ptr{
 public:
-	T* ptr;
-	markable_ptr():ptr(0){}
-	markable_ptr(const markable_ptr<T>& origin):ptr(origin.ptr){}
-	markable_ptr(T* const p):ptr(p){}
-	T& operator*() const {return *(T*)(((_ptr)ptr)&(~1));}
-	T* operator->() const {return (T*)(((_ptr)ptr)&(~1));}
-	T* get_pointer() const {return (T*)(((_ptr)ptr)&(~1));}
-	void mark(){ptr |= 1;}
-	bool check_mark(){return ptr&1;}
-	markable_ptr<T>& operator=(const markable_ptr<T>& origin){
-		ptr = origin.ptr;
-	}
-	markable_ptr<T>& operator=(const T* origin){
-		ptr = origin;
-	}
+  T* ptr;
+  markable_ptr():ptr(0){}
+  markable_ptr(const markable_ptr<T>& origin):ptr(origin.ptr){}
+  markable_ptr(T* const _ptr):ptr(_ptr){}
+  T& operator*() const {return *(T*)(ptr&(~1));}
+  T* operator->() const {return (T*)(ptr)&(~1));}
+  bool operator==(const T* const rhs)const{
+    return ptr == rhs;
+  }
+  bool operator!=(const T* const rhs)const{
+    return ptr != rhs;
+  }
+  bool attempt_mark(){return compare_and_swap(&ptr,ptr,ptr|1);}
+  T* get_pointer() const {return (T*)(ptr&(~1));}
+  bool check_mark() const {return ptr&1;}
+  markable_ptr<T>& operator=(const markable_ptr<T>& origin){
+    ptr = origin.ptr;
+  }
+  markable_ptr<T>& operator=(const T* origin){
+    ptr = origin;
+  }
 };
 #endif
