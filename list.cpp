@@ -1,6 +1,7 @@
 #include "atomics.h"
 #include <stdio.h>
-#include <boost/shared_ptr.hpp>
+#include <assert.h>
+
 
 template<typename T>
 class list{
@@ -26,16 +27,15 @@ public:// public methods
 	
 	bool insert(const T& t){
 		while(1){
-			mptr pred = find(t, &mHead);
+			mptr pred,curr;
+			find(t, &mHead, &pred, &curr);
 			assert(pred != NULL && !pred->next.is_marked());
-			mptr curr = pred->next;
 			
 			if(curr.get() == NULL || curr->item != t){
 				node* newnode = new node(t,curr);
 				if(compare_and_set(&pred->next, curr.get(), newnode)){
 					return true; 
 				}else{
-					delete newnode;
 					continue;
 				}
 			}else{
@@ -45,10 +45,11 @@ public:// public methods
 	}
 	bool erase(const T& t){
 		while(1){
-			mptr pred = find(t, &mHead);
+			mptr pred,curr;
+			find(t, &mHead, &pred, &curr);
 			assert(pred != NULL && !pred->next.is_marked());
-			mptr curr = pred->next;
-			if(curr.get() == NULL){ return true;}
+			
+			if(curr.get() == NULL){ return false;}
 			if(curr->item == t){
 				mptr succ = curr->next;
 				if(curr->next.attempt_mark()){
@@ -62,6 +63,23 @@ public:// public methods
 			}
 		}
 	}
+	bool contains(const T& t)const{
+		mptr ptr = mHead.next;
+		while(ptr != NULL){
+			if(ptr->item < t){
+				ptr = ptr->next;
+				continue;}
+			else{break;}
+		}
+		if(ptr.get() == NULL){return false;}
+		if(ptr->item == t){
+			if(ptr->next.is_marked()){ // marked object is invalid
+				return false;
+			}else{
+				return true;
+			}
+		}else {return false;}
+	}
 	void dump(void)const{
 		mptr ptr = mHead.next;
 		while(ptr != NULL){
@@ -71,13 +89,17 @@ public:// public methods
 		fprintf(stderr,"\n");
 	}
 private:
-	mptr find(const T& t, node* head){
+	void find(const T& t, node* head, mptr* _pred, mptr* _curr){
 		while(1){
 			mptr pred = head;
 			mptr curr = pred->next;
-			if(pred != head ) continue;
+			if(pred != head) continue;
 			while(1){
-				if(curr.get() == NULL){return pred;}
+				if(curr.get() == NULL){
+					*_pred = pred;
+					*_curr = curr;
+					return;
+				}
 				mptr succ = curr->next;
 				if(curr.is_marked()){
 					if(compare_and_set(&pred->next, curr.get(), succ.get())){
@@ -91,7 +113,9 @@ private:
 						pred = curr;
 						curr = succ;
 					}else{
-						return pred;
+						*_pred = pred;
+						*_curr = curr;
+						return;
 					}
 				}
 			}
@@ -117,7 +141,7 @@ public:
 		srand((double)time(NULL));
 	}
 	void run(){
-		for(int i=0; i<1024*1024; i++){
+		for(int i=0; i<1024; i++){// insert * 1024
 			int test = rand();
 			std::set<int>::iterator it = reg.find(test);
 			if(it == reg.end()){
@@ -127,13 +151,48 @@ public:
 			}
 			reg.insert(test);
 		}
+		for(int i=0; i<1024; i++){// erase * 1024
+			int test = rand();
+			std::set<int>::iterator it = reg.find(test);
+			if(it == reg.end()){
+				assert(mlist.erase(test) == false);
+			}else{
+				assert(mlist.erase(test) == true);
+			}
+			reg.erase(test);
+		}
+		// contains
+		std::set<int>::iterator it = reg.begin();
+		while(it == reg.end()){
+			int test = *it;
+			assert(mlist.contains(test) == true);
+		}
+		for(int i=0; i<2048; i++){// contains * 2048
+			int test = rand();
+			std::set<int>::iterator it = reg.find(test);
+			if(it == reg.end()){
+				assert(mlist.contains(test) == false);
+			}else{
+				assert(mlist.contains(test) == true);
+			}
+			reg.erase(test);
+		}
 		mlist.dump();
 		state = true;
 	}
-	void trying(){
+	void minitest(){
 		assert(mlist.insert(10) == true);
-		assert(mlist.erase(10) == true);
-		assert(mlist.insert(10) == true);
+		assert(mlist.insert(1) == true);
+		assert(mlist.insert(4) == true);
+		assert(mlist.insert(59) == true);
+		assert(mlist.contains(10) == true);
+		assert(mlist.contains(1) == true);
+		assert(mlist.contains(10) == true);
+		assert(mlist.contains(4) == true);
+		assert(mlist.contains(59) == true);
+		assert(mlist.insert(10) == false);
+		assert(mlist.erase(4) == true);
+		assert(mlist.contains(4) == false);
 		
 		state = true;
 	}
@@ -142,7 +201,7 @@ public:
 
 int main(void){
 	tester test;
-	test.trying();
+	test.run();
 	if(test.success()){
 		printf("valid.\n");
 	}else{
