@@ -4,8 +4,8 @@ WARNS = -Wall -Wextra -Wformat=2 -Wstrict-aliasing=2 -Wcast-qual -Wcast-align \
 	-Wwrite-strings -Wfloat-equal -Wpointer-arith -Wswitch-enum
 LDOPT= -pthread
 
-target:list
-#target:stack
+#target:list
+target:queue
 
 list:list_test.o list.o Makefile
 	$(CC) list.o list_test.o -o list $(OPTS) $(WARNS) $(LDOPT)
