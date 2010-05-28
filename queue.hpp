@@ -54,7 +54,12 @@ public:
 
 			if(first == last){
 				if(next == NULL){
-					return false;
+					usleep( rand() & (backoff-1));
+					if(backoff < 32){
+						backoff <<= 1;
+					}
+					continue;
+					//return false;
 				}
 				compare_and_set(&mTail,last,next);
 			}else{
