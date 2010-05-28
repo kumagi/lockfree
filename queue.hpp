@@ -54,9 +54,8 @@ public:
 
 			if(first == last){
 				if(next == NULL){
-					usleep( rand() & (backoff-1));
-					if(backoff < 32){
-						backoff <<= 1;
+					while(mHead->mNext == NULL){
+						usleep(1);
 					}
 					continue;
 					//return false;
